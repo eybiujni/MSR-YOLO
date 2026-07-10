@@ -1,32 +1,33 @@
-import torch
 import math
-import torch.nn as nn
-# from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
 
+import torch
+import torch.nn as nn
+from ARCHI.archi_utils import get_permute_order
+
+# from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
 from ARCHI.SAVSSM.common.SAIN import SRAdaIN
 from ARCHI.SAVSSM.common.SConv import SConv
-from ARCHI.archi_utils import get_permute_order
 
 
 class SS2D(nn.Module):
     def __init__(
-            self,
-            d_model=64,
-            d_state=16,
-            d_conv=3,
-            expand=2.,
-            dt_rank="auto",
-            dt_min=0.001,
-            dt_max=0.1,
-            dt_init="random",
-            dt_scale=1.0,
-            dt_init_floor=1e-4,
-            representation_dim=64,
-            mamba_from_trion=1,
-            bias=False,
-            device=None,
-            dtype=None,
-            zero_init=0
+        self,
+        d_model=64,
+        d_state=16,
+        d_conv=3,
+        expand=2.0,
+        dt_rank="auto",
+        dt_min=0.001,
+        dt_max=0.1,
+        dt_init="random",
+        dt_scale=1.0,
+        dt_init_floor=1e-4,
+        representation_dim=64,
+        mamba_from_trion=1,
+        bias=False,
+        device=None,
+        dtype=None,
+        zero_init=0,
     ):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
@@ -53,11 +54,13 @@ class SS2D(nn.Module):
         #     padding=(d_conv - 1) // 2,
         #     **factory_kwargs,
         # )
-        self.SConv = SConv(in_channels=self.d_inner,
-                           out_channels=self.d_inner,
-                           kernel_size=3,
-                           groups=self.d_inner,
-                           representation_dim=representation_dim)
+        self.SConv = SConv(
+            in_channels=self.d_inner,
+            out_channels=self.d_inner,
+            kernel_size=3,
+            groups=self.d_inner,
+            representation_dim=representation_dim,
+        )
 
         self.act = nn.SiLU()
 
@@ -71,14 +74,18 @@ class SS2D(nn.Module):
         del self.x_proj
 
         self.dt_projs = (
-            self.dt_init(self.dt_rank, self.d_inner, dt_scale, dt_init, dt_min, dt_max, dt_init_floor,
-                         **factory_kwargs),
-            self.dt_init(self.dt_rank, self.d_inner, dt_scale, dt_init, dt_min, dt_max, dt_init_floor,
-                         **factory_kwargs),
-            self.dt_init(self.dt_rank, self.d_inner, dt_scale, dt_init, dt_min, dt_max, dt_init_floor,
-                         **factory_kwargs),
-            self.dt_init(self.dt_rank, self.d_inner, dt_scale, dt_init, dt_min, dt_max, dt_init_floor,
-                         **factory_kwargs),
+            self.dt_init(
+                self.dt_rank, self.d_inner, dt_scale, dt_init, dt_min, dt_max, dt_init_floor, **factory_kwargs
+            ),
+            self.dt_init(
+                self.dt_rank, self.d_inner, dt_scale, dt_init, dt_min, dt_max, dt_init_floor, **factory_kwargs
+            ),
+            self.dt_init(
+                self.dt_rank, self.d_inner, dt_scale, dt_init, dt_min, dt_max, dt_init_floor, **factory_kwargs
+            ),
+            self.dt_init(
+                self.dt_rank, self.d_inner, dt_scale, dt_init, dt_min, dt_max, dt_init_floor, **factory_kwargs
+            ),
         )
         self.dt_projs_weight = nn.Parameter(torch.stack([t.weight for t in self.dt_projs], dim=0))  # (K=4, inner, rank)
         self.dt_projs_bias = nn.Parameter(torch.stack([t.bias for t in self.dt_projs], dim=0))  # (K=4, inner)
@@ -88,15 +95,10 @@ class SS2D(nn.Module):
         # self.Ds = self.D_init(self.d_inner, copies=4, merge=True)  # (K=4, D, N)
         self.A_logs_generate = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
-            nn.Conv2d(self.representation_dim,
-                      self.d_inner * 4 * self.d_state,
-                      kernel_size=1)
+            nn.Conv2d(self.representation_dim, self.d_inner * 4 * self.d_state, kernel_size=1),
         )
         self.Ds_generate = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1, 1)),
-            nn.Conv2d(self.representation_dim,
-                      self.d_inner * 4,
-                      kernel_size=1)
+            nn.AdaptiveAvgPool2d((1, 1)), nn.Conv2d(self.representation_dim, self.d_inner * 4, kernel_size=1)
         )
         # self.A_logs_generate = nn.Linear(self.representation_dim, self.d_inner * 4 * self.d_state, bias=False)
         # self.Ds_generate = nn.Linear(self.representation_dim, self.d_inner * 4, bias=False)
@@ -108,12 +110,13 @@ class SS2D(nn.Module):
         self.out_proj = nn.Linear(self.d_inner, self.d_model, bias=bias, **factory_kwargs)
 
     @staticmethod
-    def dt_init(dt_rank, d_inner, dt_scale=1.0, dt_init="random", dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4,
-                **factory_kwargs):
+    def dt_init(
+        dt_rank, d_inner, dt_scale=1.0, dt_init="random", dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4, **factory_kwargs
+    ):
         dt_proj = nn.Linear(dt_rank, d_inner, bias=True, **factory_kwargs)
 
         # Initialize special dt projection to preserve variance at initialization
-        dt_init_std = dt_rank ** -0.5 * dt_scale
+        dt_init_std = dt_rank**-0.5 * dt_scale
         if dt_init == "constant":
             nn.init.constant_(dt_proj.weight, dt_init_std)
         elif dt_init == "random":
@@ -123,8 +126,7 @@ class SS2D(nn.Module):
 
         # Initialize dt bias so that F.softplus(dt_bias) is between dt_min and dt_max
         dt = torch.exp(
-            torch.rand(d_inner, **factory_kwargs) * (math.log(dt_max) - math.log(dt_min))
-            + math.log(dt_min)
+            torch.rand(d_inner, **factory_kwargs) * (math.log(dt_max) - math.log(dt_min)) + math.log(dt_min)
         ).clamp(min=dt_init_floor)
         # Inverse of softplus: https://github.com/pytorch/pytorch/issues/72759
         inv_dt = dt + torch.log(-torch.expm1(-dt))
@@ -141,7 +143,9 @@ class SS2D(nn.Module):
         K = 4
 
         x = x.view(B, C, -1).contiguous()
-        (o1, o2, o3, o4), (o1_inverse, o2_inverse, o3_inverse, o4_inverse), (d1, d2, d3, d4) = get_permute_order(H, W)
+        (o1, o2, o3, o4), (o1_inverse, o2_inverse, o3_inverse, o4_inverse), (_d1, _d2, _d3, _d4) = get_permute_order(
+            H, W
+        )
         # # print(scan_order)
         xs = torch.stack([x[:, :, o1], x[:, :, o2], x[:, :, o3], x[:, :, o4]], dim=1)
 
@@ -160,8 +164,13 @@ class SS2D(nn.Module):
 
         dt_projs_bias = self.dt_projs_bias.float().view(-1)  # (k * d)
         out_y = self.selective_scan(
-            xs, dts,
-            As, Bs, Cs, Ds, z=None,
+            xs,
+            dts,
+            As,
+            Bs,
+            Cs,
+            Ds,
+            z=None,
             delta_bias=dt_projs_bias,
             delta_softplus=True,
             return_last_state=False,
@@ -176,7 +185,7 @@ class SS2D(nn.Module):
         return y1, y2, y3, y4
 
     def forward(self, x: torch.Tensor, representation):
-        B, H, W, C = x.shape
+        B, H, W, _C = x.shape
         # xz = self.in_proj(x)
         # x, z = xz.chunk(2, dim=-1)
         x = self.in_proj(x)
