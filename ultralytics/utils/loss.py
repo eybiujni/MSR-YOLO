@@ -13,7 +13,12 @@ from ultralytics.utils.ops import crop_mask, xywh2xyxy, xyxy2xywh
 from ultralytics.utils.tal import RotatedTaskAlignedAssigner, TaskAlignedAssigner, dist2bbox, dist2rbox, make_anchors
 from ultralytics.utils.torch_utils import autocast
 
-from .metrics import bbox_iou, probiou, bbox_mpdiou, bbox_inner_iou, bbox_focaler_iou, bbox_inner_mpdiou, bbox_focaler_mpdiou, wasserstein_loss, WiseIouLoss
+from .metrics import (
+    WiseIouLoss,
+    bbox_iou,
+    probiou,
+    wasserstein_loss,
+)
 from .tal import bbox2dist
 
 
@@ -118,7 +123,7 @@ class BboxLoss(nn.Module):
         # WiseIOU
         self.use_wiseiou = True
         if self.use_wiseiou:
-            self.wiou_loss = WiseIouLoss(ltype='CIoU', monotonous=False, inner_iou=False, focaler_iou=False)
+            self.wiou_loss = WiseIouLoss(ltype="CIoU", monotonous=False, inner_iou=False, focaler_iou=False)
 
     def forward(
         self,
@@ -133,8 +138,9 @@ class BboxLoss(nn.Module):
         """Compute IoU and DFL losses for bounding boxes."""
         weight = target_scores.sum(-1)[fg_mask].unsqueeze(-1)
         if self.use_wiseiou:
-            wiou = self.wiou_loss(pred_bboxes[fg_mask], target_bboxes[fg_mask], ret_iou=False, ratio=0.7, d=0.0,
-                                  u=0.95).unsqueeze(-1)
+            wiou = self.wiou_loss(
+                pred_bboxes[fg_mask], target_bboxes[fg_mask], ret_iou=False, ratio=0.7, d=0.0, u=0.95
+            ).unsqueeze(-1)
             loss_iou = (wiou * weight).sum() / target_scores_sum
         else:
             iou = bbox_iou(pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=False, CIoU=True)
