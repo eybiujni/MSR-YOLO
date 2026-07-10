@@ -3,17 +3,17 @@ import warnings
 from pathlib import Path
 
 from PIL import Image
-from torch.utils.data import IterableDataset, Dataset
-from torchvision.transforms import ToTensor, Compose, Resize, CenterCrop
+from torch.utils.data import Dataset, IterableDataset
+from torchvision.transforms import CenterCrop, Compose, Resize, ToTensor
 from torchvision.utils import save_image
 
 Image.MAX_IMAGE_PIXELS = None
 
-from PIL import ImageFile
 # ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+
 def files_in(dir):
-    return list(sorted(Path(dir).glob('*')))
+    return list(sorted(Path(dir).glob("*")))
 
 
 def save(img_tensor, file):
@@ -25,16 +25,19 @@ def save(img_tensor, file):
 
 def load(file):
     img = Image.open(str(file))
-    img = img.convert('RGB')
+    img = img.convert("RGB")
     return img
 
 
 def style_transforms(size=256):
     # Style images must be 256x256 for AdaConv
-    return Compose([
-        Resize(size=size),  # Resize to keep aspect ratio
-        CenterCrop(size=(size, size)),  # Center crop to square
-        ToTensor()])
+    return Compose(
+        [
+            Resize(size=size),  # Resize to keep aspect ratio
+            CenterCrop(size=(size, size)),  # Center crop to square
+            ToTensor(),
+        ]
+    )
 
 
 def content_transforms(min_size=None):
@@ -51,7 +54,9 @@ class StylizationDataset(Dataset):
         self.content_files = content_files
         self.style_files = style_files
 
-        id = lambda x: x
+        def id(x):
+            return x
+
         self.content_transform = id if content_transform is None else content_transform
         self.style_transform = id if style_transform is None else style_transform
 
@@ -65,8 +70,8 @@ class StylizationDataset(Dataset):
         style_img = self.style_transform(style_img)
 
         return {
-            'content': content_img,
-            'style': style_img,
+            "content": content_img,
+            "style": style_img,
         }
 
     def __len__(self):
@@ -82,9 +87,8 @@ class StylizationDataset(Dataset):
 
 
 class EndlessDataset(IterableDataset):
-    """
-    Wrapper for StylizationDataset which loops infinitely.
-    Usefull when training based on iterations instead of epochs
+    """Wrapper for StylizationDataset which loops infinitely. Useful when training based on iterations instead of
+    epochs.
     """
 
     def __init__(self, *args, **kwargs):
@@ -98,4 +102,4 @@ class EndlessDataset(IterableDataset):
                 yield self.dataset[idx]
             except Exception as e:
                 files = self.dataset.files_at_index(idx)
-                warnings.warn(f'\n{str(e)}\n\tFiles: [{str(files[0])}, {str(files[1])}]')
+                warnings.warn(f"\n{e!s}\n\tFiles: [{files[0]!s}, {files[1]!s}]")
