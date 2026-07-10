@@ -26,13 +26,12 @@ backbone:
 
 # YOLOv10.0n head
 head:
-  - [ [ 4, 6, 10 ], 1, SimFusion_TS3, [ ] ]
-  - [ -1, 1, dilation_block, [ 256 ] ]
+  - [[4, 6, 10], 1, SimFusion_TS3, []]
+  - [-1, 1, dilation_block, [256]]
 
-  - [ -1, 1, nn.Upsample, [ None, 2, 'bilinear' ] ]
-  - [ [ -1, 2 ], 1, Concat, [ 1 ] ]
-  - [ -1, 1, Conv, [ 128, 1, 1 ] ]
-  - [ -1, 1, Conv, [ 128, 3, 1 ] ]
+  - [-1, 1, nn.Upsample, [None, 2, "bilinear"]]
+  - [[-1, 2], 1, Concat, [1]]
+  - [-1, 1, Conv, [128, 1, 1]]
+  - [-1, 1, Conv, [128, 3, 1]]
 
-  - [ [16], 1, Detect, [ nc ] ]
-
+  - [[16], 1, Detect, [nc]]

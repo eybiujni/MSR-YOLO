@@ -29,7 +29,7 @@ class W_MSA(nn.Module):
         # Relative position index
         coords_h = torch.arange(self.window_size[0])
         coords_w = torch.arange(self.window_size[1])
-        coords = torch.stack(torch.meshgrid([coords_h, coords_w], indexing='ij'))  # (2, Wh, Ww)
+        coords = torch.stack(torch.meshgrid([coords_h, coords_w], indexing="ij"))  # (2, Wh, Ww)
         coords_flatten = torch.flatten(coords, 1)  # (2, Wh*Ww)
         relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # (2, Wh*Ww, Wh*Ww)
         relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # (Wh*Ww, Wh*Ww, 2)
@@ -50,10 +50,11 @@ class W_MSA(nn.Module):
     def forward(self, x, mask=None):
         """
         Args:
-            x: (B, C, H, W)  # 4D input
+            x: (B, C, H, W) # 4D input
             mask: (0/-inf) mask with shape (num_windows, Wh*Ww, Wh*Ww) or None
+
         Returns:
-            x: (B, C, H, W)  # 4D output
+            x: (B, C, H, W) # 4D output.
         """
         B, C, H, W = x.shape
         Wh, Ww = self.window_size
@@ -76,20 +77,16 @@ class W_MSA(nn.Module):
 
         # Standard attention computation
         B_, N, C = x.shape
-        qkv = (
-            self.qkv(x)
-            .reshape(B_, N, 3, self.num_heads, C // self.num_heads)
-            .permute(2, 0, 3, 1, 4)
-        )
+        qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]  # (B_, num_heads, N, head_dim)
 
         q = q * self.scale
         attn = q @ k.transpose(-2, -1)  # (B_, num_heads, N, N)
 
         # Add relative position bias
-        relative_position_bias = self.relative_position_bias_table[
-            self.relative_position_index.view(-1)
-        ].view(Wh * Ww, Wh * Ww, -1)  # (Wh*Ww, Wh*Ww, nH)
+        relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
+            Wh * Ww, Wh * Ww, -1
+        )  # (Wh*Ww, Wh*Ww, nH)
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # (nH, Wh*Ww, Wh*Ww)
         attn = attn + relative_position_bias.unsqueeze(0)
 
