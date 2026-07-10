@@ -16,6 +16,7 @@ __all__ = (
     "Conv",
     "Conv2",
     "ConvTranspose",
+    "DSConv",
     "DWConv",
     "DWConvTranspose2d",
     "Focus",
@@ -24,7 +25,6 @@ __all__ = (
     "LightConv",
     "RepConv",
     "SpatialAttention",
-    "DSConv"
 )
 
 
@@ -201,7 +201,7 @@ class DWConv(Conv):
 
 
 class DSConv(nn.Module):
-    """Depthwise Separable Convolution"""
+    """Depthwise Separable Convolution."""
 
     def __init__(self, c1, c2, k=1, s=1, d=1, act=True) -> None:
         super().__init__()
