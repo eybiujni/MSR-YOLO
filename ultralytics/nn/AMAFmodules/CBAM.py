@@ -2,10 +2,9 @@ import torch
 import torch.nn as nn
 
 
-
 class ChannelAttention(nn.Module):
     def __init__(self, in_channels, reduction_ratio=16):
-        super(ChannelAttention, self).__init__()
+        super().__init__()
         # 平均池化和最大池化
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
@@ -14,7 +13,7 @@ class ChannelAttention(nn.Module):
         self.fc = nn.Sequential(
             nn.Conv2d(in_channels, in_channels // reduction_ratio, kernel_size=1, bias=False),
             nn.ReLU(),
-            nn.Conv2d(in_channels // reduction_ratio, in_channels, kernel_size=1, bias=False)
+            nn.Conv2d(in_channels // reduction_ratio, in_channels, kernel_size=1, bias=False),
         )
         self.sigmoid = nn.Sigmoid()
 
@@ -30,7 +29,7 @@ class ChannelAttention(nn.Module):
 
 class SpatialAttention(nn.Module):
     def __init__(self, kernel_size=7):
-        super(SpatialAttention, self).__init__()
+        super().__init__()
 
         # 卷积层
         self.conv = nn.Conv2d(2, 1, kernel_size=kernel_size, padding=(kernel_size // 2), bias=False)
@@ -49,7 +48,7 @@ class SpatialAttention(nn.Module):
 
 class CBAM(nn.Module):
     def __init__(self, in_channels, reduction_ratio=16, kernel_size=7):
-        super(CBAM, self).__init__()
+        super().__init__()
 
         # 通道注意力和空间注意力
         self.channel_attention = ChannelAttention(in_channels, reduction_ratio=reduction_ratio)

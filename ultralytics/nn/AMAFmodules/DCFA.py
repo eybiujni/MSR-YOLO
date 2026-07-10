@@ -30,7 +30,7 @@ class W_MSA(nn.Module):
         # Relative position index
         coords_h = torch.arange(self.window_size[0])
         coords_w = torch.arange(self.window_size[1])
-        coords = torch.stack(torch.meshgrid([coords_h, coords_w], indexing='ij'))  # (2, Wh, Ww)
+        coords = torch.stack(torch.meshgrid([coords_h, coords_w], indexing="ij"))  # (2, Wh, Ww)
         coords_flatten = torch.flatten(coords, 1)  # (2, Wh*Ww)
         relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # (2, Wh*Ww, Wh*Ww)
         relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # (Wh*Ww, Wh*Ww, 2)
@@ -51,10 +51,11 @@ class W_MSA(nn.Module):
     def forward(self, x, mask=None):
         """
         Args:
-            x: (B, C, H, W)  # 4D input
+            x: (B, C, H, W) # 4D input
             mask: (0/-inf) mask with shape (num_windows, Wh*Ww, Wh*Ww) or None
+
         Returns:
-            x: (B, C, H, W)  # 4D output
+            x: (B, C, H, W) # 4D output.
         """
         B, C, H, W = x.shape
         Wh, Ww = self.window_size
@@ -77,20 +78,16 @@ class W_MSA(nn.Module):
 
         # Standard attention computation
         B_, N, C = x.shape
-        qkv = (
-            self.qkv(x)
-            .reshape(B_, N, 3, self.num_heads, C // self.num_heads)
-            .permute(2, 0, 3, 1, 4)
-        )
+        qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]  # (B_, num_heads, N, head_dim)
 
         q = q * self.scale
         attn = q @ k.transpose(-2, -1)  # (B_, num_heads, N, N)
 
         # Add relative position bias
-        relative_position_bias = self.relative_position_bias_table[
-            self.relative_position_index.view(-1)
-        ].view(Wh * Ww, Wh * Ww, -1)  # (Wh*Ww, Wh*Ww, nH)
+        relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
+            Wh * Ww, Wh * Ww, -1
+        )  # (Wh*Ww, Wh*Ww, nH)
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # (nH, Wh*Ww, Wh*Ww)
         attn = attn + relative_position_bias.unsqueeze(0)
 
@@ -123,7 +120,7 @@ class W_MSA(nn.Module):
 
 class CAB(nn.Module):
     def __init__(self, in_channels, reduction_ratio=16):
-        super(CAB, self).__init__()
+        super().__init__()
 
         # 第一部分：双卷积路径
         self.conv1 = nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1)
@@ -155,8 +152,17 @@ class CAB(nn.Module):
 
 
 class CADP_Block(nn.Module):
-    def __init__(self, dim, window_size=(8, 8), num_heads=12, reduction_ratio=16,
-                 qkv_bias=True, qk_scale=None, attn_drop=0.0, proj_drop=0.0):
+    def __init__(
+        self,
+        dim,
+        window_size=(8, 8),
+        num_heads=12,
+        reduction_ratio=16,
+        qkv_bias=True,
+        qk_scale=None,
+        attn_drop=0.0,
+        proj_drop=0.0,
+    ):
         super().__init__()
 
         # Part 1: Main path
@@ -166,20 +172,17 @@ class CADP_Block(nn.Module):
 
         # Part 2: MLP path
         self.norm2 = nn.LayerNorm(dim)
-        self.mlp = nn.Sequential(
-            nn.Linear(dim, dim * 4),
-            nn.GELU(),
-            nn.Linear(dim * 4, dim)
-        )
+        self.mlp = nn.Sequential(nn.Linear(dim, dim * 4), nn.GELU(), nn.Linear(dim * 4, dim))
 
     def forward(self, x):
         """
         Args:
-            x: (B, C, H, W)  # 4D input
+            x: (B, C, H, W) # 4D input
+
         Returns:
-            x: (B, C, H, W)  # 4D output
+            x: (B, C, H, W) # 4D output.
         """
-        B, C, H, W = x.shape
+        _B, _C, _H, _W = x.shape
 
         # Part 1: Dual attention path
         residual1 = x
@@ -209,7 +212,7 @@ class CADP_Block(nn.Module):
 
 class GS_EMA(nn.Module):
     def __init__(self, channels, c2=None, factor=32):
-        super(GS_EMA, self).__init__()
+        super().__init__()
         self.groups = factor
         assert channels // self.groups > 0
         self.softmax = nn.Softmax(-1)
@@ -246,7 +249,7 @@ class DCFA(nn.Module):
     def forward(self, x):
         x_gs = self.gs_ema(x)
         x_cadp = self.cadp(x)
-        return x_gs + x_cadp   # 特征相加
+        return x_gs + x_cadp  # 特征相加
 
 
 if __name__ == "__main__":
