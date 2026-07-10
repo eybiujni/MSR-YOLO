@@ -24,12 +24,12 @@ from urllib.parse import unquote
 import cv2
 import numpy as np
 import torch
+import yaml
 
 from ultralytics import __version__
 from ultralytics.utils.git import GitRepo
 from ultralytics.utils.patches import imread, imshow, imwrite, torch_save  # for patches
 from ultralytics.utils.tqdm import TQDM  # noqa
-import yaml
 
 # PyTorch Multi-GPU DDP Constants
 RANK = int(os.getenv("RANK", -1))
@@ -542,7 +542,6 @@ class YAML:
 
     def __init__(self):
         """Initialize with optimal YAML implementation (C-based when available)."""
-
         self.yaml = yaml
         # Use C-based implementation if available for better performance
         try:
