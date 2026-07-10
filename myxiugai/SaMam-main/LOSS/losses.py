@@ -1,19 +1,19 @@
-
-
-import torch.nn as nn
-import torch
-from LOSS.loss_util import normal, calc_mean_std
-
-
 import os
+
+import torch
+import torch.nn as nn
+from LOSS.loss_util import calc_mean_std, normal
+
 loss_dir = os.path.dirname(__file__)
-vgg_ckp = os.path.join(loss_dir, 'vgg_ckp', 'vgg_normalised.pth')
+vgg_ckp = os.path.join(loss_dir, "vgg_ckp", "vgg_normalised.pth")
+
 
 class Integration_loss(nn.Module):
-    def __init__(self,):
+    def __init__(
+        self,
+    ):
 
         super().__init__()
-
 
         encoder = nn.Sequential(
             nn.Conv2d(3, 3, (1, 1)),
@@ -68,7 +68,7 @@ class Integration_loss(nn.Module):
             nn.ReLU(),  # relu5-3
             nn.ReflectionPad2d((1, 1, 1, 1)),
             nn.Conv2d(512, 512, (3, 3)),
-            nn.ReLU()  # relu5-4
+            nn.ReLU(),  # relu5-4
         )
         encoder.load_state_dict(torch.load(vgg_ckp))
         encoder = nn.Sequential(*list(encoder.children())[:44])
@@ -80,7 +80,7 @@ class Integration_loss(nn.Module):
         self.enc_4 = nn.Sequential(*enc_layers[18:31])  # relu3_1 -> relu4_1
         self.enc_5 = nn.Sequential(*enc_layers[31:44])  # relu4_1 -> relu5_1
 
-        for name in ['enc_1', 'enc_2', 'enc_3', 'enc_4', 'enc_5']:
+        for name in ["enc_1", "enc_2", "enc_3", "enc_4", "enc_5"]:
             for param in getattr(self, name).parameters():
                 param.requires_grad = False
 
@@ -89,18 +89,18 @@ class Integration_loss(nn.Module):
     def encode_with_intermediate(self, input):
         results = [input]
         for i in range(5):
-            func = getattr(self, 'enc_{:d}'.format(i + 1))
+            func = getattr(self, f"enc_{i + 1:d}")
             results.append(func(results[-1]))
         return results[1:]
 
     def calc_content_loss(self, input, target):
-        assert (input.size() == target.size())
-        assert (target.requires_grad is False)
+        assert input.size() == target.size()
+        assert target.requires_grad is False
         return self.mse_loss(input, target)
 
     def calc_style_loss(self, input, target):
-        assert (input.size() == target.size())
-        assert (target.requires_grad is False)
+        assert input.size() == target.size()
+        assert target.requires_grad is False
         input_mean, input_std = calc_mean_std(input)
         target_mean, target_std = calc_mean_std(target)
         return self.mse_loss(input_mean, target_mean) + self.mse_loss(input_std, target_std)
@@ -112,13 +112,13 @@ class Integration_loss(nn.Module):
         # Content losses
         Ics_feats = self.encode_with_intermediate(Ics)
         loss_c = self.calc_content_loss(normal(Ics_feats[-1]), normal(Ic_feats[-1])) + self.calc_content_loss(
-            normal(Ics_feats[-2]), normal(Ic_feats[-2]))
+            normal(Ics_feats[-2]), normal(Ic_feats[-2])
+        )
 
         # Style losses
         loss_s = self.calc_style_loss(Ics_feats[0], Is_feats[0])
         for i in range(1, 5):
             loss_s += self.calc_style_loss(Ics_feats[i], Is_feats[i])
-
 
         # Identity losses lambda 1
         loss_lambda1 = self.calc_content_loss(samples_cc, samples_c) + self.calc_content_loss(samples_ss, samples_s)
@@ -127,26 +127,26 @@ class Integration_loss(nn.Module):
         Icc_feats = self.encode_with_intermediate(samples_cc)
         Iss_feats = self.encode_with_intermediate(samples_ss)
 
-
-        loss_lambda2 = self.calc_content_loss(Icc_feats[0], Ic_feats[0]) + self.calc_content_loss(Iss_feats[0],Is_feats[0])
+        loss_lambda2 = self.calc_content_loss(Icc_feats[0], Ic_feats[0]) + self.calc_content_loss(
+            Iss_feats[0], Is_feats[0]
+        )
         for i in range(1, 5):
             loss_lambda2 += self.calc_content_loss(Icc_feats[i], Ic_feats[i]) + self.calc_content_loss(
-                Iss_feats[i], Is_feats[i])
+                Iss_feats[i], Is_feats[i]
+            )
 
         return loss_c, loss_s, loss_lambda1, loss_lambda2
 
-if __name__ == '__main__':
 
+if __name__ == "__main__":
     net = Integration_loss().cuda()
 
-    print('# net parameters:', sum(param.numel() for param in net.parameters()), '\n')
+    print("# net parameters:", sum(param.numel() for param in net.parameters()), "\n")
 
     Ics = torch.randn((4, 3, 256, 256)).cuda()
-    Ic = torch.randn((4,3,256,256)).cuda()
-    Icc = torch.randn((4,3,256,256)).cuda()
-    Is = torch.randn((4,3,256,256)).cuda()
-    Iss = torch.randn((4,3,256,256)).cuda()
-    out = net.forward(Ics, Icc,Iss,Ic,Is)
+    Ic = torch.randn((4, 3, 256, 256)).cuda()
+    Icc = torch.randn((4, 3, 256, 256)).cuda()
+    Is = torch.randn((4, 3, 256, 256)).cuda()
+    Iss = torch.randn((4, 3, 256, 256)).cuda()
+    out = net.forward(Ics, Icc, Iss, Ic, Is)
     print(out)
-
-
