@@ -12,7 +12,9 @@ import torch
 import torch.nn as nn
 
 from ultralytics.nn.autobackend import check_class_names
+from ultralytics.nn.extra_modules import *
 from ultralytics.nn.modules import (
+    AFMM,
     AIFI,
     C1,
     C2,
@@ -20,8 +22,11 @@ from ultralytics.nn.modules import (
     C3,
     C3TR,
     ELAN1,
+    FEM,
+    MSFA,
     OBB,
     PSA,
+    SCAM,
     SPP,
     SPPELAN,
     SPPF,
@@ -69,25 +74,8 @@ from ultralytics.nn.modules import (
     YOLOEDetect,
     YOLOESegment,
     v10Detect,
-    FEM,
-    SCAM,
-    FFM_Concat2,
-    FFM_Concat3,
-    MAM,
-    MSFA,
-    VAT_SCAM,
-    SimFusion_TS,
-    SimFusion_TS3,
-    dilation_block,
-    AFMM,
-    AFMMDWGV,
-    AFMMRe,
-    AFMM_2in,
-    ASPP,
-    AFMMDWYB,
-    AFMMLiteG,
 )
-from ultralytics.utils import DEFAULT_CFG_DICT, LOGGER, YAML, colorstr, emojis, DEFAULT_CFG_KEYS
+from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, YAML, colorstr, emojis
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
 from ultralytics.utils.loss import (
     E2EDetectLoss,
@@ -110,7 +98,8 @@ from ultralytics.utils.torch_utils import (
     smart_inference_mode,
     time_sync,
 )
-from ultralytics.nn.extra_modules import *
+
+
 class BaseModel(torch.nn.Module):
     """Base class for all YOLO models in the Ultralytics family.
 
@@ -1793,9 +1782,9 @@ def guess_model_task(model):
     )
     return "detect"  # assume detect
 
+
 def attempt_load_weights(weights, device=None, inplace=True, fuse=False):
     """Loads an ensemble of models weights=[a,b,c] or a single model weights=[a] or weights=a."""
-
     ensemble = Ensemble()
     for w in weights if isinstance(weights, list) else [weights]:
         ckpt, w = torch_safe_load(w)  # load ckpt
