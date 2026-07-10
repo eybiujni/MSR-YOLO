@@ -13,6 +13,10 @@ from .conv import Conv, DWConv, GhostConv, LightConv, RepConv, autopad
 from .transformer import TransformerBlock
 
 __all__ = (
+    "AFMM",
+    "AFMMDWGV",
+    "AFMMDWYB",
+    "ASPP",
     "C1",
     "C2",
     "C2PSA",
@@ -21,12 +25,20 @@ __all__ = (
     "CIB",
     "DFL",
     "ELAN1",
+    "FEM",
+    "MAM",
+    "MSFA",
     "PSA",
+    "SCAM",
     "SPP",
     "SPPELAN",
     "SPPF",
+    "VAT_SCAM",
     "AConv",
     "ADown",
+    "AFMMLiteG",
+    "AFMMRe",
+    "AFMM_2in",
     "Attention",
     "BNContrastiveHead",
     "Bottleneck",
@@ -41,6 +53,8 @@ __all__ = (
     "CBFuse",
     "CBLinear",
     "ContrastiveHead",
+    "FFM_Concat2",
+    "FFM_Concat3",
     "GhostBottleneck",
     "HGBlock",
     "HGStem",
@@ -51,24 +65,10 @@ __all__ = (
     "RepVGGDW",
     "ResNetLayer",
     "SCDown",
-    "TorchVision",
-    "FEM",
-    "FFM_Concat2",
-    "FFM_Concat3",
-    "SCAM",
-    "VAT_SCAM",
     "SimFusion_TS",
     "SimFusion_TS3",
+    "TorchVision",
     "dilation_block",
-    "MAM",
-    "MSFA",
-    "AFMM",
-    "AFMMRe",
-    "AFMM_2in",
-    "AFMMDWGV",
-    "ASPP",
-    "AFMMDWYB",
-    "AFMMLiteG",
 )
 
 
@@ -1961,9 +1961,10 @@ class SAVPE(nn.Module):
 
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
 
+
 class SCAM(nn.Module):
     def __init__(self, in_channels, reduction=1):
-        super(SCAM, self).__init__()
+        super().__init__()
         self.in_channels = in_channels
         self.inter_channels = in_channels
 
@@ -2002,6 +2003,7 @@ class SCAM(nn.Module):
 
         return x + y
 
+
 class Conv_withoutBN(nn.Module):
     # Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)
     default_act = nn.SiLU()  # default activation
@@ -2016,11 +2018,9 @@ class Conv_withoutBN(nn.Module):
 
 
 class BasicConv(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=1, stride=1,
-                 padding=0, dilation=1, groups=1, relu=True):
-        super(BasicConv, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride,
-                              padding, dilation, groups, bias=False)
+    def __init__(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, relu=True):
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias=False)
         self.bn = nn.BatchNorm2d(out_channels)
         # 改进 1：将 ReLU 统一改为 SiLU (YOLOv8 官方标准)
         self.act = nn.SiLU(inplace=True) if relu else nn.Identity()
@@ -2031,28 +2031,27 @@ class BasicConv(nn.Module):
 
 class MAM(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, reduction=8):
-        super(MAM, self).__init__()
+        super().__init__()
         self.stride = stride
         mid_channels = in_channels // 2
 
         # === 4 条特征分支 (保留你的核心设计) ===
         self.branch1 = nn.Sequential(
-            BasicConv(in_channels, mid_channels, 1),
-            BasicConv(mid_channels, mid_channels, 3, stride, 1, relu=False)
+            BasicConv(in_channels, mid_channels, 1), BasicConv(mid_channels, mid_channels, 3, stride, 1, relu=False)
         )
         self.branch2 = nn.Sequential(
             BasicConv(in_channels, mid_channels, 1),
             BasicConv(mid_channels, mid_channels, (1, 3), stride, (0, 1)),
-            BasicConv(mid_channels, mid_channels, (3, 1), 1, (1, 0), relu=False)
+            BasicConv(mid_channels, mid_channels, (3, 1), 1, (1, 0), relu=False),
         )
         self.branch3 = nn.Sequential(
             BasicConv(in_channels, mid_channels, 1),
             BasicConv(mid_channels, mid_channels, (3, 1), stride, (1, 0)),
-            BasicConv(mid_channels, mid_channels, (1, 3), 1, (0, 1), relu=False)
+            BasicConv(mid_channels, mid_channels, (1, 3), 1, (0, 1), relu=False),
         )
         self.branch4 = nn.Sequential(
             BasicConv(in_channels, mid_channels, 1),
-            BasicConv(mid_channels, mid_channels, 3, stride, 3, dilation=3, relu=False)
+            BasicConv(mid_channels, mid_channels, 3, stride, 3, dilation=3, relu=False),
         )
 
         # === 改进 2：混合注意力机制 (CBAM 理念) ===
@@ -2064,25 +2063,23 @@ class MAM(nn.Module):
             nn.Conv2d(cat_channels, cat_channels // reduction, 1, bias=False),
             nn.SiLU(inplace=True),
             nn.Conv2d(cat_channels // reduction, cat_channels, 1, bias=False),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
         # 改进 3：空间注意力 (Spatial Attention)
         # 通过最大池化和平均池化的拼接来捕捉显著特征区域
-        self.spatial_attention = nn.Sequential(
-            nn.Conv2d(2, 1, kernel_size=7, padding=3, bias=False),
-            nn.Sigmoid()
-        )
+        self.spatial_attention = nn.Sequential(nn.Conv2d(2, 1, kernel_size=7, padding=3, bias=False), nn.Sigmoid())
 
         # === 输出转换 ===
         self.conv_out = nn.Conv2d(cat_channels, out_channels, 1, 1, 0, bias=False)
         self.bn_out = nn.BatchNorm2d(out_channels)
         self.act_out = nn.SiLU(inplace=True)
 
-        self.shortcut = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 1, stride, bias=False),
-            nn.BatchNorm2d(out_channels)
-        ) if stride != 1 or in_channels != out_channels else nn.Identity()
+        self.shortcut = (
+            nn.Sequential(nn.Conv2d(in_channels, out_channels, 1, stride, bias=False), nn.BatchNorm2d(out_channels))
+            if stride != 1 or in_channels != out_channels
+            else nn.Identity()
+        )
 
     def forward(self, x):
         identity = self.shortcut(x)
@@ -2110,29 +2107,29 @@ class MAM(nn.Module):
         out += identity
         return self.act_out(out)
 
+
 class MSFA(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
-        super(MSFA, self).__init__()
+        super().__init__()
         mid_channels = in_channels // 2
 
         # 4条特征分支保持不变
         self.branch1 = nn.Sequential(
-            BasicConv(in_channels, mid_channels, 1),
-            BasicConv(mid_channels, mid_channels, 3, stride, 1, relu=False)
+            BasicConv(in_channels, mid_channels, 1), BasicConv(mid_channels, mid_channels, 3, stride, 1, relu=False)
         )
         self.branch2 = nn.Sequential(
             BasicConv(in_channels, mid_channels, 1),
             BasicConv(mid_channels, mid_channels, (1, 3), stride, (0, 1)),
-            BasicConv(mid_channels, mid_channels, (3, 1), 1, (1, 0), relu=False)
+            BasicConv(mid_channels, mid_channels, (3, 1), 1, (1, 0), relu=False),
         )
         self.branch3 = nn.Sequential(
             BasicConv(in_channels, mid_channels, 1),
             BasicConv(mid_channels, mid_channels, (3, 1), stride, (1, 0)),
-            BasicConv(mid_channels, mid_channels, (1, 3), 1, (0, 1), relu=False)
+            BasicConv(mid_channels, mid_channels, (1, 3), 1, (0, 1), relu=False),
         )
         self.branch4 = nn.Sequential(
             BasicConv(in_channels, mid_channels, 1),
-            BasicConv(mid_channels, mid_channels, 3, stride, 3, dilation=3, relu=False)
+            BasicConv(mid_channels, mid_channels, 3, stride, 3, dilation=3, relu=False),
         )
 
         # 高分辨率分支
@@ -2141,20 +2138,18 @@ class MSFA(nn.Module):
 
         # --- 核心改进：极其轻量化的权重模块 (参数量几乎忽略不计) ---
         # 使用 3x3 深度可分离卷积代替原来的空间注意力一部分，增加特征交互
-        self.spatial_attention = nn.Sequential(
-            nn.Conv2d(2, 1, kernel_size=3, padding=1, bias=False),
-            nn.Sigmoid()
-        )
+        self.spatial_attention = nn.Sequential(nn.Conv2d(2, 1, kernel_size=3, padding=1, bias=False), nn.Sigmoid())
 
         # --- 核心改进：将输出卷积改为带有更强交互能力的结构 ---
         self.conv_out = nn.Conv2d(cat_channels, out_channels, 1, 1, 0, bias=False)
         self.bn_out = nn.BatchNorm2d(out_channels)
         self.act_out = nn.SiLU(inplace=True)
 
-        self.shortcut = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 1, stride, bias=False),
-            nn.BatchNorm2d(out_channels)
-        ) if stride != 1 or in_channels != out_channels else nn.Identity()
+        self.shortcut = (
+            nn.Sequential(nn.Conv2d(in_channels, out_channels, 1, stride, bias=False), nn.BatchNorm2d(out_channels))
+            if stride != 1 or in_channels != out_channels
+            else nn.Identity()
+        )
 
     def forward(self, x):
         identity = self.shortcut(x)
@@ -2164,7 +2159,7 @@ class MSFA(nn.Module):
         b3 = self.branch3(x)
         b4 = self.branch4(x)
         # high_res = self.high_res(x)
-        high_res = self.high_res(x) + 0.1 * x[:, :self.high_res.out_channels, :, :]
+        high_res = self.high_res(x) + 0.1 * x[:, : self.high_res.out_channels, :, :]
 
         out = torch.cat([b1, b2, b3, b4, high_res], dim=1)
 
