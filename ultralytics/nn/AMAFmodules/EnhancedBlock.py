@@ -16,7 +16,7 @@ class EnhancedBlock(nn.Module):
         self.branch1 = nn.Sequential(
             nn.Conv2d(c1 // 2, c2 // 2, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(c2 // 2),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
 
         # 分支2：改进的MaxPool路径
@@ -24,21 +24,18 @@ class EnhancedBlock(nn.Module):
             nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
             nn.Conv2d(c1 // 2, c2 // 2, kernel_size=1, bias=False),
             nn.BatchNorm2d(c2 // 2),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
 
         # 残差路径：输入通道为 c1，输出为 c2
-        self.residual = nn.Sequential(
-            nn.Conv2d(c1, c2, kernel_size=1, stride=2, bias=False),
-            nn.BatchNorm2d(c2)
-        )
+        self.residual = nn.Sequential(nn.Conv2d(c1, c2, kernel_size=1, stride=2, bias=False), nn.BatchNorm2d(c2))
 
         # 特征融合
         self.fusion = nn.Sequential(
             nn.Conv2d(2 * c2, c2, kernel_size=1, bias=False),
             nn.BatchNorm2d(c2),
             nn.ReLU(inplace=True),
-            nn.Dropout2d(0.1)
+            nn.Dropout2d(0.1),
         )
 
         self._initialize_weights()
@@ -46,7 +43,7 @@ class EnhancedBlock(nn.Module):
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
@@ -56,7 +53,7 @@ class EnhancedBlock(nn.Module):
     def forward(self, x):
         residual = self.residual(x)
         x = self.avgpool(x)
-        x1, x2 = x[:, :self.C // 2], x[:, self.C // 2:]
+        x1, x2 = x[:, : self.C // 2], x[:, self.C // 2 :]
         x1 = self.branch1(x1)
         x2 = self.branch2(x2)
         out = torch.cat([x1, x2], dim=1)

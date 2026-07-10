@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 class CAB(nn.Module):
     def __init__(self, in_channels, reduction_ratio=16):
-        super(CAB, self).__init__()
+        super().__init__()
 
         # 第一部分：双卷积路径
         self.conv1 = nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1)
