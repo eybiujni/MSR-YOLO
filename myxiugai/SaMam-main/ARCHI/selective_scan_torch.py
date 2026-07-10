@@ -1,17 +1,18 @@
 import torch
 
+
 def selective_scan_fn(
-        u: torch.Tensor, # (B, K * C, L)
-        delta: torch.Tensor, # (B, K * C, L)
-        A: torch.Tensor, # (K * C, N)
-        B: torch.Tensor, # (B, K, N, L)
-        C: torch.Tensor, # (B, K, N, L)
-        D: torch.Tensor = None, # (K * C)
-        delta_bias: torch.Tensor = None, # (K * C)
-        delta_softplus=True,
-        oflex=True,
-        *args,
-        **kwargs
+    u: torch.Tensor,  # (B, K * C, L)
+    delta: torch.Tensor,  # (B, K * C, L)
+    A: torch.Tensor,  # (K * C, N)
+    B: torch.Tensor,  # (B, K, N, L)
+    C: torch.Tensor,  # (B, K, N, L)
+    D: torch.Tensor = None,  # (K * C)
+    delta_bias: torch.Tensor = None,  # (K * C)
+    delta_softplus=True,
+    oflex=True,
+    *args,
+    **kwargs,
 ):
     dtype_in = u.dtype
     Batch, K, N, L = B.shape
@@ -36,8 +37,8 @@ def selective_scan_fn(
 
     B = B.view(Batch, K, 1, N, L).repeat(1, 1, Cdim, 1, 1).view(Batch, KCdim, N, L)
     C = C.view(Batch, K, 1, N, L).repeat(1, 1, Cdim, 1, 1).view(Batch, KCdim, N, L)
-    deltaA = torch.exp(torch.einsum('bdl,dn->bdln', delta, A))
-    deltaB_u = torch.einsum('bdl,bdnl,bdl->bdln', delta, B, u)
+    deltaA = torch.exp(torch.einsum("bdl,dn->bdln", delta, A))
+    deltaB_u = torch.einsum("bdl,bdnl,bdl->bdln", delta, B, u)
 
     # print(deltaB_u2 == deltaB_u)
     # exit(123)
@@ -47,9 +48,9 @@ def selective_scan_fn(
         ys = []
         for i in range(L):
             x = deltaA[:, :, i, :] * x + deltaB_u[:, :, i, :]
-            y = torch.einsum('bdn,bdn->bd', x, C[:, :, :, i])
+            y = torch.einsum("bdn,bdn->bd", x, C[:, :, :, i])
             ys.append(y)
-        y = torch.stack(ys, dim=2) # (B, C, L)
+        y = torch.stack(ys, dim=2)  # (B, C, L)
 
     out = y if D is None else y + u * D.unsqueeze(-1)
     return out if oflex else out.to(dtype=dtype_in)
