@@ -183,7 +183,7 @@ If you find our work useful in your research, please cite our [paper](https://op
 }
 ```
 
-## :yum: $\mathrm{VII}$ - Acknowledgement
+## :yum: $\mathrm{VII}$ - Acknowledgment
 
 This repository is heavily built upon the amazing works [AdaConv](https://github.com/RElbers/ada-conv-pytorch), [StyTR-2](https://github.com/diyiiyiii/StyTR-2) and [VMamba](https://github.com/MzeroMiko/VMamba). Thanks for their great effort to community.
 
