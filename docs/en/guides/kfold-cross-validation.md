@@ -69,7 +69,7 @@ Let's get started.
 
     ```python
 
-from myxiugai import yamltest
+     myxiugai import yamltest
 
     yaml_file = "path/to/data.yaml"  # your data YAML with data directories and names dictionary
     with open(yaml_file, encoding="utf8") as y:
