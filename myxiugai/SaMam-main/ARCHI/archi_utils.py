@@ -1,16 +1,15 @@
-
 import torch.nn as nn
 
 
-
 class PatchUnEmbed(nn.Module):
-    r""" return 2D feature map from 1D token sequence
+    r"""return 2D feature map from 1D token sequence.
+
     Args:
-        img_size (int): Image size.  Default: None.
+        img_size (int): Image size. Default: None.
         patch_size (int): Patch token size. Default: None.
         in_chans (int): Number of input image channels. Default: 3.
         embed_dim (int): Number of linear projection output channels. Default: 96.
-        norm_layer (nn.Module, optional): Normalization layer. Default: None
+        norm_layer (nn.Module, optional): Normalization layer. Default: None.
     """
 
     def __init__(self):
@@ -22,10 +21,10 @@ class PatchUnEmbed(nn.Module):
 
 
 class PatchEmbed(nn.Module):
-    r""" transfer 2D feature map into 1D token sequence
+    r"""transfer 2D feature map into 1D token sequence.
 
     Args:
-        img_size (int): Image size.  Default: None.
+        img_size (int): Image size. Default: None.
         patch_size (int): Patch token size. Default: None.
         in_chans (int): Number of input image channels. Default: 3.
         embed_dim (int): Number of linear projection output channels. Default: 96.
@@ -46,13 +45,8 @@ class PatchEmbed(nn.Module):
         return x
 
 
-
-
-
-
-
-def get_permute_order(h,w):
-    H, W = h,w
+def get_permute_order(h, w):
+    H, W = h, w
     L = H * W
 
     # [start, right, left, up, down] [0, 1, 2, 3, 4]
@@ -84,9 +78,7 @@ def get_permute_order(h,w):
                 i = i + 1
                 d1.append(4)
                 j_d = "right"
-    d1 = [0] + d1[:-1]
-
-
+    d1 = [0, *d1[:-1]]
 
     o2 = []
     d2 = []
@@ -116,14 +108,12 @@ def get_permute_order(h,w):
                 i = i - 1
                 d2.append(3)
                 j_d = "right"
-    d2 = [0] + d2[:-1]
-
-
+    d2 = [0, *d2[:-1]]
 
     o3 = []
     d3 = []
     o3_inverse = [-1 for _ in range(L)]
-    i, j = 0, W-1
+    i, j = 0, W - 1
     i_d = "down"
     while j > -1:
         assert i_d in ["down", "up"]
@@ -146,16 +136,13 @@ def get_permute_order(h,w):
                 j = j - 1
                 d3.append(1)
                 i_d = "down"
-    d3 = [0] + d3[:-1]
-
+    d3 = [0, *d3[:-1]]
 
     o4 = []
     d4 = []
     o4_inverse = [-1 for _ in range(L)]
 
-
-
-    i, j = H-1, 0
+    i, j = H - 1, 0
     i_d = "up"
     while j < W:
         assert i_d in ["down", "up"]
@@ -178,7 +165,7 @@ def get_permute_order(h,w):
                 j = j + 1
                 d4.append(2)
                 i_d = "down"
-    d4 = [0] + d4[:-1]
+    d4 = [0, *d4[:-1]]
 
     o1 = tuple(o1)
     d1 = tuple(d1)
@@ -198,23 +185,19 @@ def get_permute_order(h,w):
 
     return (o1, o2, o3, o4), (o1_inverse, o2_inverse, o3_inverse, o4_inverse), (d1, d2, d3, d4)
 
-if __name__ == '__main__':
-    (o1, o2, o3, o4), (o1_inverse, o2_inverse, o3_inverse, o4_inverse), (d1, d2, d3, d4) = get_permute_order(3,2)
+
+if __name__ == "__main__":
+    (o1, o2, o3, o4), (o1_inverse, o2_inverse, o3_inverse, o4_inverse), (d1, d2, d3, d4) = get_permute_order(3, 2)
     print(o1)
     print(o1_inverse)
     print(d1)
-    print('-----------------------')
+    print("-----------------------")
     print(o2)
     print(o2_inverse)
     print(d2)
-    print('-----------------------')
+    print("-----------------------")
     print(o3)
     print(o3_inverse)
-    print('-----------------------')
+    print("-----------------------")
     print(o4)
     print(o4_inverse)
-
-
-
-
-
