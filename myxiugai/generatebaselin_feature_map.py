@@ -1,10 +1,14 @@
 import sys
+
 sys.path.append("/home/user/zq/python/detection/ultralytics2")
-from ultralytics import YOLO
-import cv2
-import numpy as np
-import matplotlib.pyplot as plt
 import os
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+
+from ultralytics import YOLO
+
 
 def save_feature_by_module(model, img_path, module, save_path):
     features = {}
@@ -56,8 +60,5 @@ if __name__ == "__main__":
     # baseline 对应 MSFA 模型中第 9 层输出的位置
     # baseline 的第 8 层是 C2f，最适合作为对应层特征
     save_feature_by_module(
-        baseline_model,
-        img_path,
-        baseline_model.model.model[8],
-        f"{save_dir}/baseline_layer8_C2f.png"
+        baseline_model, img_path, baseline_model.model.model[8], f"{save_dir}/baseline_layer8_C2f.png"
     )
