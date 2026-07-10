@@ -1,11 +1,12 @@
+import math
+
 import torch
 import torch.nn as nn
-import math
 
 
 class ECA(nn.Module):
     def __init__(self, channel, b=1, gamma=2):
-        super(ECA, self).__init__()
+        super().__init__()
         kernel_size = int(abs((math.log(channel, 2) + b) / gamma))
         kernel_size = kernel_size if kernel_size % 2 else kernel_size + 1
 
@@ -20,10 +21,9 @@ class ECA(nn.Module):
         out = x * y.expand_as(x)
         return out
 
+
 if __name__ == "__main__":
     x = torch.randn(4, 64, 32, 32)  # 一个示例输入
     eca = ECA(64)
     out = eca(x)
     print(out.shape)  # 应该输出 torch.Size([4, 64, 32, 32])
-
-
